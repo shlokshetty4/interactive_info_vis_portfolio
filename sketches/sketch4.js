@@ -6,6 +6,7 @@ registerSketch('sk4', function (p) {
     p.resizeCanvas(w, h);
   }
 
+  
   let heatMode = 0;
 
   function drawArc(cx, cy, r, a0, a1, w) {
