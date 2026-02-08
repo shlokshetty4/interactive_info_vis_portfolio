@@ -26,8 +26,6 @@ registerSketch('sk3', function (p) {
     if (h12 === 0) h12 = 12;
 
     
-    
-    
     const secondsIntoHour = m * 60 + s;
     const meltProg = secondsIntoHour / 3600; 
     const iceFrac = 1 - meltProg;            
