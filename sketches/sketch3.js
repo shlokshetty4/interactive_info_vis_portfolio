@@ -6,10 +6,6 @@ registerSketch('sk3', function (p) {
     p.resizeCanvas(w, h);
   }
 
-  function pad2(n) {
-    return (n < 10 ? "0" : "") + n;
-  }
-
   p.setup = function () {
     p.createCanvas(10, 10);
     sizeCanvas();
@@ -21,133 +17,106 @@ registerSketch('sk3', function (p) {
     const h24 = p.hour();
     const m = p.minute();
     const s = p.second();
+    const ms = p.millis();
 
     let h12 = h24 % 12;
     if (h12 === 0) h12 = 12;
 
-    
-    const secondsIntoHour = m * 60 + s;
-    const meltProg = secondsIntoHour / 3600; 
-    const iceFrac = 1 - meltProg;            
+    const breathCycle = 8000;
+    const breathProgress = (ms % breathCycle) / breathCycle;
 
-    p.background(240);
+    let breathSize;
+    if (breathProgress < 0.5) {
+      breathSize = p.map(breathProgress, 0, 0.5, 0.5, 1.0);
+    } else {
+      breathSize = p.map(breathProgress, 0.5, 1.0, 1.0, 0.5);
+    }
+
+    breathSize = p.sin(breathProgress * p.TWO_PI) * 0.25 + 0.75;
+
+    const bgBrightness = p.map(h24, 0, 23, 20, 240);
+    const bgHue = p.map(h24, 0, 23, 200, 280) % 360;
+
+    p.colorMode(p.HSB, 360, 100, 100, 100);
+    p.background(bgHue, 30, bgBrightness > 200 ? 95 : 15);
 
     const cx = p.width / 2;
     const cy = p.height / 2;
+    const baseRadius = Math.min(p.width, p.height) * 0.25;
 
-    
-    const tubeW = Math.min(p.width, p.height) * 0.22;
-    const tubeH = Math.min(p.width, p.height) * 0.62;
-
-    const tubeX = cx - tubeW / 2;
-    const tubeY = cy - tubeH / 2;
-
-    const capR = tubeW / 2;
-
-    
-    p.noStroke();
-    p.fill(255, 255, 255, 160);
-    p.rect(tubeX, tubeY, tubeW, tubeH, capR);
-
-   
     p.noFill();
-    p.stroke(60, 60, 60, 160);
+    for (let i = 0; i < 60; i++) {
+      const ringHue = p.map(i, 0, 60, 180, 280);
+      const ringAlpha = i === m ? 80 : 20;
+      const ringWeight = i === m ? 4 : (i % 5 === 0 ? 2 : 1);
+
+      p.stroke(ringHue, 60, 80, ringAlpha);
+      p.strokeWeight(ringWeight);
+
+      const ringRadius = baseRadius + (i * 3);
+      p.circle(cx, cy, ringRadius * 2);
+    }
+
+    const mainRadius = baseRadius * breathSize;
+    const secondHue = p.map(s, 0, 60, 180, 320);
+
+    for (let i = 5; i > 0; i--) {
+      p.noFill();
+      p.stroke(secondHue, 70, 90, 10);
+      p.strokeWeight(i * 3);
+      p.circle(cx, cy, mainRadius * 2 + i * 10);
+    }
+
+    p.fill(secondHue, 50, 90, 30);
+    p.stroke(secondHue, 80, 100, 60);
     p.strokeWeight(3);
-    p.rect(tubeX, tubeY, tubeW, tubeH, capR);
+    p.circle(cx, cy, mainRadius * 2);
 
+    p.push();
+    p.translate(cx, cy);
 
-    const leftTickX1 = tubeX - tubeW * 0.25;
-    const leftTickX2 = tubeX - tubeW * 0.10;
+    for (let i = 0; i < 12; i++) {
+      const angle = p.map(i, 0, 12, 0, p.TWO_PI) - p.HALF_PI;
+      const petalDist = mainRadius * 1.3;
+      const petalX = petalDist * p.cos(angle);
+      const petalY = petalDist * p.sin(angle);
 
-    p.stroke(80, 80, 80, 160);
-    p.strokeWeight(2);
-    p.fill(60, 60, 60, 170);
-    p.textAlign(p.RIGHT, p.CENTER);
+      const petalHue = p.map(i, 0, 12, 200, 300);
+      const isCurrentHour = (i + 1) === h12 || (i === 0 && h12 === 12);
 
-    for (let i = 0; i <= 60; i++) {
-      const t = i / 60; 
-      const y = tubeY + t * tubeH;
-
-      const isFive = (i % 5 === 0);
-      const tickLen = isFive ? (leftTickX2 - leftTickX1) * 1.35 : (leftTickX2 - leftTickX1);
-
-      p.strokeWeight(isFive ? 3 : 2);
-      p.line(leftTickX2 - tickLen, y, leftTickX2, y);
-
-      if (isFive) {
+      if (isCurrentHour) {
+        p.fill(petalHue, 80, 100, 80);
         p.noStroke();
-        p.textSize(Math.max(10, tubeW * 0.14));
-        p.text(i.toString(), leftTickX2 - tickLen - 6, y);
+        p.circle(petalX, petalY, 25);
+      } else {
+        p.fill(petalHue, 40, 70, 30);
+        p.noStroke();
+        p.circle(petalX, petalY, 15);
       }
     }
+    p.pop();
 
-   
-    const curY = tubeY + (m / 60) * tubeH;
-    p.stroke(220, 60, 80, 200);
-    p.strokeWeight(4);
-    p.line(tubeX, curY, tubeX + tubeW, curY);
-
-   
-    const innerPad = tubeW * 0.10;
-    const innerX = tubeX + innerPad;
-    const innerY = tubeY + innerPad;
-    const innerW = tubeW - 2 * innerPad;
-    const innerH = tubeH - 2 * innerPad;
-
-    const iceH = innerH * iceFrac;
-    const iceY = innerY + (innerH - iceH);
-
-    
-    const waterH = innerH - iceH;
-    if (waterH > 0) {
-      p.noStroke();
-      p.fill(120, 170, 220, 120);
-      p.rect(innerX, innerY + iceH, innerW, waterH, innerW * 0.25);
-    }
-
-
+    p.colorMode(p.RGB, 255);
+    p.fill(255, 255, 255, 200);
     p.noStroke();
-    p.fill(200, 235, 255, 210);
-    p.rect(innerX, iceY, innerW, iceH, innerW * 0.25);
-
-
-    p.fill(255, 255, 255, 120);
-    p.rect(innerX + innerW * 0.12, iceY + iceH * 0.08, innerW * 0.22, iceH * 0.84, innerW * 0.2);
-
-
-    const dripCount = 6;
-    for (let i = 0; i < dripCount; i++) {
-      const phase = (s / 60) * p.TWO_PI + i * 0.9;
-      const dx = innerX + innerW * (0.15 + 0.7 * (i / (dripCount - 1)));
-      const dy = innerY + iceH + (p.sin(phase) * 6 + 10);
-      p.noStroke();
-      p.fill(120, 170, 220, 140);
-      p.circle(dx, dy, innerW * 0.08);
-    }
-
-
-    p.fill(30);
     p.textAlign(p.CENTER, p.CENTER);
 
+    p.textSize(baseRadius * 0.4);
     p.textStyle(p.BOLD);
-    p.textSize(Math.max(22, tubeW * 0.55));
-    p.text(h12.toString(), cx, tubeY - tubeW * 0.55);
+    p.text(h12, cx, cy - baseRadius * 0.15);
 
+    p.textSize(baseRadius * 0.2);
     p.textStyle(p.NORMAL);
-    p.textSize(Math.max(12, tubeW * 0.18));
-    p.text(h24 < 12 ? "AM" : "PM", cx, tubeY - tubeW * 0.28);
+    p.text(p.nf(m, 2) + ":" + p.nf(s, 2), cx, cy + baseRadius * 0.2);
 
-    p.fill(30, 30, 30, 170);
-    p.textSize(Math.max(12, tubeW * 0.16));
-    p.text(
-      pad2(h12) + ":" + pad2(m) + ":" + pad2(s),
-      cx,
-      tubeY + tubeH + tubeW * 0.40
-    );
+    p.fill(255, 255, 255, 150);
+    p.textSize(baseRadius * 0.15);
+    const breathText = breathProgress < 0.5 ? "breathe in..." : "breathe out...";
+    p.text(breathText, cx, cy + baseRadius * 1.8);
 
-    p.fill(30, 30, 30, 120);
-    p.textSize(Math.max(11, tubeW * 0.14));
-    p.text("Ice resets each hour • Line = current minute", cx, tubeY + tubeH + tubeW * 0.62);
+    p.fill(255, 255, 255, 100);
+    p.textSize(12);
+    p.text("Center = time • Circle pulse = breathing • Petals = hours", cx, p.height - 20);
   };
 
   p.windowResized = function () {
